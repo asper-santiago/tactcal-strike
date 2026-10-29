@@ -27,7 +27,7 @@
 <div class="row"><button class="bt" id="bCoop">Criar sala COOP<small>até 3 jogadores + bots</small></button><button class="bt" id="bX1">Criar sala X1<small>1 contra 1</small></button></div>
 <div class="row"><input id="code" maxlength="5" placeholder="CÓDIGO" autocomplete="off"><button class="bt" id="bJoin">Entrar na sala</button></div>
 <p id="err"></p>
-<p class="hint">WASD mover · Shift correr · Z agachar · Mouse mirar · Clique atirar · Botão direito zoom · 1/2/3 armas · 4 ou V faca · F plantar/desarmar · Q/E/C/X poderes · M mouse · [ ] sensibilidade<br>Botões CORRER/AGACHAR na lateral (libere o mouse com M para clicar)</p>
+<p class="hint">WASD mover · Shift correr · Ctrl agachar · Mouse mirar · Clique atirar · Botão direito zoom · 1/2/3 armas · 4 ou V faca · F plantar/desarmar · Q/E/C/X poderes · M mouse · [ ] sensibilidade<br>Botões CORRER/AGACHAR na lateral (libere o mouse com M para clicar)</p>
 </div>
 <div id="lobby" style="display:none">
 <div class="sep" id="rmode"></div>
@@ -119,8 +119,8 @@ const gc=document.createElement('canvas');gc.width=RW;gc.height=RH;const gx=gc.g
 let U=[],P=null,spike={},st='menu',phase='play',pt=0,tm=100,round=1,score=[0,0],K={},down=0,zoomOn=0,zb=[],msgT=0,msg='',sens=.0022,mxn=.5,mIn=false,AC,shopMsg=null,FX=[];
 let cap=false,lockFail=false;const UI={run:0,cr:0,s:''};
 function setCap(on){cap=on;c.classList.toggle('cap',on);document.documentElement.classList.toggle('cap',on);
- if(on&&!document.fullscreenElement)try{const f=c.requestFullscreen&&c.requestFullscreen();if(f&&f.catch)f.catch(()=>{})}catch(e){}
- if(!on&&document.fullscreenElement)try{document.exitFullscreen()}catch(e){}
+ if(on&&!document.fullscreenElement)try{const f=c.requestFullscreen&&c.requestFullscreen();if(f&&f.then)f.then(()=>{try{navigator.keyboard&&navigator.keyboard.lock&&navigator.keyboard.lock().catch(()=>{})}catch(e){}}).catch(()=>{})}catch(e){}
+ if(!on&&document.fullscreenElement)try{document.exitFullscreen();navigator.keyboard&&navigator.keyboard.unlock&&navigator.keyboard.unlock()}catch(e){}
  if(on){lockFail=false;try{const p=c.requestPointerLock({unadjustedMovement:true});if(p&&p.catch)p.catch(()=>{try{c.requestPointerLock()}catch(e){}})}catch(e){try{c.requestPointerLock()}catch(e2){}}msgShow('Mouse capturado — M para liberar',1.6)}
  else{if(document.pointerLockElement==c)document.exitPointerLock();msgShow('Mouse liberado',1)}}
 function releaseLock(){cap=false;c.classList.remove('cap');document.documentElement.classList.remove('cap');if(document.pointerLockElement==c)try{document.exitPointerLock()}catch(e){}}
@@ -302,7 +302,7 @@ function update(dt){if(st!='play')return;msgT-=dt;
   if(cap&&lockFail&&mIn){if(mxn<.05)P.a-=2.2*dt;else if(mxn>.95)P.a+=2.2*dt}
   const f=(K.w?1:0)-(K.s?1:0),s=(K.d?1:0)-(K.a?1:0),l=Math.hypot(f,s)||1,dx=Math.cos(P.a),dy=Math.sin(P.a),mov=!!(f||s)&&!P.act;
   // Shift/botão = correr (só para frente, não mira) · Z/botão = agachar
-  const wantCr=!!(K.z||UI.cr),wantRun=!!(K.shift||UI.run)&&!wantCr&&!zoomOn&&f>0&&!P.act;
+  const wantCr=!!(K.control||UI.cr),wantRun=!!(K.shift||UI.run)&&!wantCr&&!zoomOn&&f>0&&!P.act;
   P.cr=wantCr?1:0;P.rn=wantRun?1:0;P.crs+=((wantCr?1:0)-P.crs)*Math.min(1,dt*10);P.rns+=((wantRun&&mov?1:0)-P.rns)*Math.min(1,dt*6);P.ez=.5-.14*P.crs;
   const sp=(wantRun?5.2:3.4)*(1-.5*P.crs)*(P.ps<.5?.55:1)*(P.wp=='knife'?1.1:1);
   // inércia: a velocidade acelera e desacelera suavemente (desliza um pouco ao parar)
@@ -422,7 +422,7 @@ function mbHit(e){const r=c.getBoundingClientRect(),x=(e.clientX-r.left)*RW/r.wi
 function draw(){g.textAlign='center';
  if(st=='shop'){drawShop();return}
  if(st!='play'){g.fillStyle='#0f1923';g.fillRect(0,0,RW,RH);g.fillStyle='#ff4655';g.font='bold 38px sans-serif';g.fillText(st=='over'?(score[P?P.t:0]>=4?'VITÓRIA!':'DERROTA'):'TACTICAL STRIKE FPS v5',RW/2,60);g.fillStyle='#ece8e1';g.font='14px sans-serif';
-  ['Você (e 2 aliados verdes) ataca. Plante a spike em A ou B, ou elimine os 4 defensores. Primeiro a 4 rounds.','WASD mover · Mouse mirar · Clique atirar · Botão direito: zoom · 1/2/3 armas · 4 ou V = faca (grátis)','F (segurar) em um site: PLANTAR spike (3,5s) — os defensores tentam desarmar (4s)','M captura/libera o mouse · [ e ] sensibilidade · R recarregar · Shift correr · Z agachar','','LOJA (antes de cada round)','Você começa com '+START_MONEY+'c e ganha '+REW+'c por abate','Pistola 100c · Shotgun 200c · Sniper 300c · Faca grátis (sempre com você)','','PODERES','Q Investida · E Flash · C Cura +60 HP · X Visão (2 abates)',st=='over'?'Placar '+score[0]+' x '+score[1]:'','Clique para jogar'].forEach((t,i)=>g.fillText(t,RW/2,100+i*22));return}
+  ['Você (e 2 aliados verdes) ataca. Plante a spike em A ou B, ou elimine os 4 defensores. Primeiro a 4 rounds.','WASD mover · Mouse mirar · Clique atirar · Botão direito: zoom · 1/2/3 armas · 4 ou V = faca (grátis)','F (segurar) em um site: PLANTAR spike (3,5s) — os defensores tentam desarmar (4s)','M captura/libera o mouse · [ e ] sensibilidade · R recarregar · Shift correr · Ctrl agachar','','LOJA (antes de cada round)','Você começa com '+START_MONEY+'c e ganha '+REW+'c por abate','Pistola 100c · Shotgun 200c · Sniper 300c · Faca grátis (sempre com você)','','PODERES','Q Investida · E Flash · C Cura +60 HP · X Visão (2 abates)',st=='over'?'Placar '+score[0]+' x '+score[1]:'','Clique para jogar'].forEach((t,i)=>g.fillText(t,RW/2,100+i*22));return}
  const hz=P.hz,zf=.66/P.ps;
  const dx=Math.cos(P.a),dy=Math.sin(P.a),px=-dy*P.ps,py=dx*P.ps;
  drawSky(hz,zf);drawFloor(hz,dx,dy,px,py,zf);
@@ -471,7 +471,7 @@ function draw(){g.textAlign='center';
  sk(0,'Q','dash',P.q,6,'#5ad1ff');sk(1,'E','flash',P.e,14,'#ffe27a');sk(2,'C','heal',P.cv,25,'#4fd27a');sk(3,'X','eye',0,0,'#c58aff',Math.min(2,P.ult));
  // --- estado do movimento: correr / agachar
  const st2=(i,name,on,lab)=>{const x=176+i*30,y=RH-66;g.fillStyle=on?'rgba(255,70,85,.85)':'rgba(10,18,26,.78)';g.fillRect(x,y,26,34);ico(name,x+13,y+14,16,on?'#fff':'#667');g.fillStyle=on?'#fff':'#667';g.font='bold 8px sans-serif';g.textAlign='center';g.fillText(lab,x+13,y+30)};
- st2(0,'run',P.rn,'SHIFT');st2(1,'crouch',P.crs>.5,'Z');
+ st2(0,'run',P.rn,'SHIFT');st2(1,'crouch',P.crs>.5,'CTRL');
  MBP.forEach((b,i)=>{const on=i?(UI.cr||P.cr):(UI.run||P.rn);g.fillStyle=on?'rgba(255,70,85,.88)':'rgba(10,18,26,.7)';g.beginPath();g.arc(b.x,b.y,26,0,7);g.fill();g.strokeStyle=on?'#ffb3ba':'#4a5a6b';g.lineWidth=2;g.stroke();
   ico(b.ic,b.x,b.y-4,20,on?'#fff':'#b9c4d0');g.fillStyle=on?'#fff':'#8a97a4';g.font='bold 7px sans-serif';g.textAlign='center';g.fillText(b.lb,b.x,b.y+18)});
  // --- inventário (1-4) + munição
@@ -493,10 +493,10 @@ c.addEventListener('mousedown',e=>{if(st=='shop'){shopClick(e);return}if(st=='ov
 addEventListener('mouseup',e=>{if(e.button==2)zoomOn=0;else down=0});c.addEventListener('contextmenu',e=>e.preventDefault());
 c.addEventListener('mouseenter',()=>mIn=true);c.addEventListener('mouseleave',()=>mIn=false);
 addEventListener('mousemove',e=>{if(st=='play'&&P&&P.alive&&cap&&(document.pointerLockElement==c||lockFail)){const z=P.ps<.3?.35:P.ps<.5?.55:1,mxv=Math.max(-250,Math.min(250,e.movementX)),myv=Math.max(-250,Math.min(250,e.movementY));P.a+=mxv*sens*z;P.pitch=Math.max(-150,Math.min(150,P.pitch-myv*sens*205*z))}const r=c.getBoundingClientRect();mxn=(e.clientX-r.left)/r.width});
-addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(st=='play'&&e.ctrlKey&&k!='control')e.preventDefault();
  if(st=='shop'){if(/^[123]$/.test(k))shopBuy(WL[k-1]);else if(k=='4'||k=='v'){P.wp='knife';snd(300,.08,.1);shopMsg={t:'FACA equipada (grátis)',u:performance.now()+1800}}else if(k=='enter'||k==' '){e.preventDefault();shopReady()}return}
  K[k]=1;if(k=='[')sens=Math.max(.0008,sens-.0003);if(k==']')sens=Math.min(.006,sens+.0003);if(k=='['||k==']')msgShow('Sensibilidade '+(sens*1000).toFixed(1),1);if(k=='m'&&st=='play')setCap(!cap);if(P)power(k)});
-addEventListener('keyup',e=>K[e.key.toLowerCase()]=0);
+addEventListener('keyup',e=>K[e.key.toLowerCase()]=0);addEventListener('blur',()=>{K={}}); // soltar teclas ao trocar de janela (Ctrl não fica preso)
 /* ===== MULTIPLAYER (PeerJS / WebRTC) =====
    O host roda a simulação (bots, spike, rounds). Cada jogador manda a própria posição e os próprios tiros
    (o acerto é decidido pixel a pixel na tela de quem atirou). O host devolve snapshots a ~20/s. */
