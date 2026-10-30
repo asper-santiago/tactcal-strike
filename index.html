@@ -581,7 +581,7 @@ addEventListener('keyup',e=>K[e.key.toLowerCase()]=0);addEventListener('blur',()
    O host roda a simulação (bots, spike, rounds). Cada jogador manda a própria posição e os próprios tiros
    (o acerto é decidido pixel a pixel na tela de quem atirou). O host devolve snapshots a ~20/s. */
 const NET={role:null,mode:'off',conns:[],hc:null,myId:0,room:'',peer:null,names:[],occ:[true],acc:0,ready:[],shopT:25,sentReady:0,specs:null,started:0,joined:0};
-const $=id=>document.getElementById(id),CHR='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',PFX='tsfps5-';
+const $=id=>document.getElementById(id),CHR='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',PFX='tsfps5-',PCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 const netErr=t=>{$('err').textContent=t||''},show=(id,v)=>{$(id).style.display=v?'':'none'};
 function sendTo(i,m){const k=NET.conns[i];if(k&&k.open)try{k.send(m)}catch(e){}}
 function bcast(m){if(NET.role=='host')for(let i=1;i<NET.conns.length;i++)sendTo(i,m)}
@@ -605,7 +605,7 @@ function hostRoom(mode){
  if(typeof Peer=='undefined'){netErr('Multiplayer indisponível: a biblioteca PeerJS não carregou (verifique a internet).');return}
  netClose();NET.role='host';NET.mode=mode;NET.myId=0;NET.names[0]='Jogador 1';
  NET.room=Array.from({length:5},()=>CHR[Math.random()*CHR.length|0]).join('');
- const pr=new Peer(PFX+NET.room);NET.peer=pr;
+ const pr=new Peer(PFX+NET.room,PCFG);NET.peer=pr;
  let opened=0;pr.on('open',()=>{opened=1;showLobby()});
  pr.on('disconnected',()=>{if(NET.peer===pr&&!pr.destroyed)try{pr.reconnect()}catch(e){}}); // sem isso a sala some do servidor e ninguém consegue entrar
  setTimeout(()=>{if(NET.peer===pr&&!opened){netErr('Não consegui falar com o servidor de salas (0.peerjs.com). Verifique a internet/bloqueio de rede e tente de novo.');netClose();showHome()}},9000);
@@ -640,11 +640,11 @@ function sendSnap(){bcast({t:'s',u:U.map(u=>[+u.x.toFixed(2),+u.y.toFixed(2),+u.
 function joinRoom(code){code=(code||'').trim().toUpperCase();netErr('');
  if(code.length!=5){netErr('Digite o código de 5 caracteres');return}
  if(typeof Peer=='undefined'){netErr('Multiplayer indisponível: a biblioteca PeerJS não carregou (verifique a internet).');return}
- netClose();NET.role='client';NET.room=code;const pr=new Peer();NET.peer=pr;
+ netClose();NET.role='client';NET.room=code;const pr=new Peer(PCFG);NET.peer=pr;
  pr.on('error',e=>{if(NET.role!='client')return;const m=e.type=='peer-unavailable'?'Sala não encontrada — confira o código (o host precisa estar na tela da sala)':'Erro de rede: '+e.type;showMenu(m)});
  pr.on('open',()=>{const k=pr.connect(PFX+code,{reliable:true});NET.hc=k;k.on('data',clientData);
   k.on('close',()=>{if(NET.role=='client')showMenu('Conexão com o host perdida')})});
- setTimeout(()=>{if(NET.role=='client'&&NET.room==code&&!NET.joined)showMenu('Não foi possível conectar (tempo esgotado). Confira o código; em redes diferentes/4G a conexão direta pode ser bloqueada — tente na mesma rede Wi-Fi.')},10000)}
+ setTimeout(()=>{if(NET.role=='client'&&NET.room==code&&!NET.joined)showMenu('Não foi possível conectar (tempo esgotado). Confira o código; em redes diferentes/4G a conexão direta pode ser bloqueada — tente na mesma rede Wi-Fi.')},15000)}
 function clientData(m){if(!m||NET.role!='client')return;
  switch(m.t){
  case 'wel':NET.myId=m.id;NET.mode=m.mode;NET.joined=1;NET.names=[];showLobby();break;
@@ -699,5 +699,9 @@ $('sSens').oninput=e=>{sens=e.target.value/1000;$('vSens').textContent=(sens*100
 $('sVol').oninput=e=>{VOL=e.target.value/100;$('vVol').textContent=Math.round(VOL*100)+'%';saveSet()};
 $('sVol').onchange=()=>snd(520,.12,.2);
 $('sHT').onchange=e=>{HTON=e.target.checked;saveSet()};
-let last=performance.now();(function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;if(paused&&st!='play'&&st!='shop')closePause(1);netTick(dt);update(dt);draw();requestAnimationFrame(loop)})(last);
+let last=performance.now();
+function step(){const n=performance.now(),dt=Math.min(.05,(n-last)/1000);last=n;if(paused&&st!='play'&&st!='shop')closePause(1);netTick(dt);update(dt)}
+// a simulação roda num Worker: aba em segundo plano (ex.: host numa aba e convidado em outra) não congela mais o jogo
+let wk=null;try{wk=new Worker(URL.createObjectURL(new Blob(['setInterval(function(){postMessage(0)},16)'],{type:'text/javascript'})));wk.onmessage=step}catch(e){wk=null}
+(function frame(){if(!wk)step();draw();requestAnimationFrame(frame)})();
 </script></html>
